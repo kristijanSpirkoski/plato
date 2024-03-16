@@ -14,13 +14,11 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-@app.route('/apps', methods=['GET'])
-def get_apps():
+@app.route('/users/<uuid>/apps', methods=['GET'])
+def get_apps(uuid):
     app.logger.info("GET: Request received")
-    app.logger.info(request.args)
-    uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
-    user = db.thales.users.find_one({"uuid": uuid})
 
+    user = db.thales.users.find_one({"uuid": int(uuid)})
     dt = datetime.now()
     today = dt.strftime('%A').lower()
     user_apps = user["apps"]
@@ -36,26 +34,21 @@ def get_apps():
 
     return response
 
-@app.route('/apps', methods=['POST'])
-def use_app_for_user():
+@app.route('/users/<uuid>/apps/<appId>', methods=['POST'])
+def use_app_for_user(uuid, appId):
     app.logger.info("POST: Request received")
     app.logger.info(request.args.to_dict())
-    uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
-    user_app = request.args.get('app')
     
-    use_app(app=user_app, uuid=uuid)
+    use_app(app=appId, uuid=int(uuid))
     return "Success"
 
-@app.route('/apps', methods=['PUT'])
-def add_app_for_user():
-    uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
-    app = request.args.get('app')
-    
+@app.route('/users/<uuid>/apps/<appId>', methods=['PUT'])
+def add_app_for_user(uuid, appId):
     this_week = generate_randomized_week(DEFAULT_DAYS_PER_WEEK)
 
     users = db.thales.users
     app_obj = {
-        "app_name": app,
+        "app_name": appId,
         "moderation": {
             "days_per_week": DEFAULT_DAYS_PER_WEEK,
             "minutes_per_day": DEFAULT_MINUTES_PER_DAY
@@ -63,19 +56,16 @@ def add_app_for_user():
         },
         "this_week": this_week
     }
-    query = { "$set" : { f"apps.{app.lower()}" : app_obj}}
-    users.update_one({"uuid": uuid}, query)
+    query = { "$set" : { f"apps.{appId.lower()}" : app_obj}}
+    users.update_one({"uuid": int(uuid)}, query)
 
     return "Success"
 
-@app.route('/apps', methods=['DELETE'])
-def delete_app_for_user():
-    uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
-    app = request.args.get('app')
-    
+@app.route('/users/<uuid>/apps/<appId>', methods=['DELETE'])
+def delete_app_for_user(uuid, appId):
     users = db.thales.users
-    query = { "$unset": { f"apps.{app}": "" } }
-    users.update_one({"uuid": uuid}, query)
+    query = { "$unset": { f"apps.{appId}": "" } }
+    users.update_one({"uuid": int(uuid)}, query)
 
     return "Success"
 

@@ -1,18 +1,11 @@
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
-
 from app.logic import generate_randomized_week
-from db.db import ping
-from db.credentials import uri
+from mongo.db import db, ping
 
-
-client = MongoClient(uri, server_api=ServerApi('1'))
 
 def run_weekly_random_engine(uuid = 0):
     ping()
-    db = client.thales
-    users = db.users
-
+    
+    users = db.thales.users
     user = users.find_one({"uuid": uuid})
 
     for app in user["apps"].keys():
