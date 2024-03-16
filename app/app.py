@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
 from flask import Flask, request
-from db.db import get_user_data, create_app, delete_app
 from app.logic import use_app, generate_randomized_week
+from mongo.db import db
 app = Flask(__name__)
 
 DEFAULT_UUID = 0
@@ -19,11 +19,11 @@ def get_apps():
     app.logger.info("GET: Request received")
     app.logger.info(request.args)
     uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
-    user_data = get_user_data(uuid=uuid)
+    user = db.thales.users.find_one({"uuid": uuid})
 
     dt = datetime.now()
     today = dt.strftime('%A').lower()
-    user_apps = user_data["apps"]
+    user_apps = user["apps"]
 
     for user_app in user_apps.keys():
         todays_moderation = user_apps[user_app]["this_week"][today]
@@ -53,11 +53,18 @@ def add_app_for_user():
     
     this_week = generate_randomized_week(DEFAULT_DAYS_PER_WEEK)
 
-    create_app(
-        uuid=uuid,
-        app=app,
-        this_week_schedule=this_week,
-    )
+    users = db.thales.users
+    app_obj = {
+        "app_name": app,
+        "moderation": {
+            "days_per_week": DEFAULT_DAYS_PER_WEEK,
+            "minutes_per_day": DEFAULT_MINUTES_PER_DAY
+
+        },
+        "this_week": this_week
+    }
+    query = { "$set" : { f"apps.{app.lower()}" : app_obj}}
+    users.update_one({"uuid": uuid}, query)
 
     return "Success"
 
@@ -66,10 +73,9 @@ def delete_app_for_user():
     uuid = int(request.args.get('uuid', default = DEFAULT_UUID))
     app = request.args.get('app')
     
-    delete_app(
-        uuid=uuid,
-        app=app
-    )
+    users = db.thales.users
+    query = { "$unset": { f"apps.{app}": "" } }
+    users.update_one({"uuid": uuid}, query)
 
     return "Success"
 

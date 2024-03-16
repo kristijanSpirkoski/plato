@@ -1,2 +1,2 @@
-db/credentials.py
+mongo/credentials.py
 **/__pycache__
